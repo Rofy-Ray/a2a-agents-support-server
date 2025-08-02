@@ -1202,14 +1202,35 @@ def main():
 
     @app.route("/vector-store/kb/initialize", methods=["POST"])
     async def initialize_kb_vectorstore(request):
-        """Initialize KB vector store from PDF file"""
+        """Initialize KB vector store from uploaded PDF file"""
         try:
-            body = await request.json()
-            pdf_path = body.get("pdf_path", "knowledge_base.pdf")
+            # Handle file upload
+            form = await request.form()
+            pdf_file = form.get("pdf_file")
+            
+            if not pdf_file:
+                return JSONResponse({"status": "error", "message": "No PDF file uploaded"})
+            
+            # Save uploaded file to temporary location
+            import tempfile
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+                pdf_content = await pdf_file.read()
+                temp_file.write(pdf_content)
+                temp_pdf_path = temp_file.name
+            
+            # Initialize KB vector store with the temporary file
             rag_system = get_rag_system()
-            success = rag_system.create_kb_vectorstore(pdf_path)
+            success = rag_system.create_kb_vectorstore(temp_pdf_path)
+            
+            # Clean up temporary file
+            import os
+            try:
+                os.unlink(temp_pdf_path)
+            except:
+                pass  # Ignore cleanup errors
+            
             payload = (
-                {"status": "success", "message": f"KB vector store initialized from {pdf_path}"}
+                {"status": "success", "message": f"KB vector store initialized from uploaded PDF: {pdf_file.filename}"}
                 if success
                 else {"status": "error", "message": "Failed to initialize KB vector store"}
             )

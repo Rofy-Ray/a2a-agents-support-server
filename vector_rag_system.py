@@ -11,12 +11,12 @@ from datetime import datetime
 from openai import OpenAI
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyMuPDFLoader
-from langchain_community.embeddings import OpenAIEmbeddings
-from langchain_community.vectorstores import Qdrant
+from langchain_openai import OpenAIEmbeddings
+from langchain_qdrant import Qdrant
 from langchain.schema import Document
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
-from langchain_community.llms import OpenAI as LangChainOpenAI
+from langchain_openai import OpenAI as LangChainOpenAI
 from qdrant_client import QdrantClient
 
 from dotenv import load_dotenv
