@@ -1,0 +1,16 @@
+a2a-sdk
+fastapi
+uvicorn
+httpx
+pydantic
+python-multipart
+openai
+langchain
+langchain-openai
+langchain-community
+qdrant-client
+tiktoken
+pymupdf
+numpy
+langsmith
+python-dotenv
