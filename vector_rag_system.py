@@ -12,7 +12,7 @@ from openai import OpenAI
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_openai import OpenAIEmbeddings
-from langchain_qdrant import Qdrant
+from langchain_qdrant import QdrantVectorStore
 from langchain.schema import Document
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
@@ -67,8 +67,8 @@ class VectorRAGSystem:
         
         # Setup text splitter
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
-            chunk_overlap=50,
+            chunk_size=50,
+            chunk_overlap=5,
             length_function=self._token_len,
             separators=["\n\n", "\n", ".", "!", "?", ";", ":", " ", ""]
         )
@@ -108,17 +108,19 @@ class VectorRAGSystem:
         """Initialize ephemeral in-memory FAQ and KB vector stores"""
         try:
             # Initialize FAQ vector store (in-memory)
-            self.faq_vectorstore = Qdrant(
-                client=QdrantClient(location=":memory:"),
+            self.faq_vectorstore = QdrantVectorStore.from_documents(
+                documents=[],  # Start with empty collection
+                embedding=self.embedding_model,
                 collection_name="faq_collection",
-                embeddings=self.embedding_model,
+                client=QdrantClient(location=":memory:"),
             )
             
             # Initialize KB vector store (in-memory)
-            self.kb_vectorstore = Qdrant(
+            self.kb_vectorstore = QdrantVectorStore.from_documents(
+                documents=[],  # Start with empty collection
+                embedding=self.embedding_model,
+                collection_name="kb_collection",
                 client=QdrantClient(location=":memory:"),
-                collection_name="kb_collection", 
-                embeddings=self.embedding_model,
             )
             
             # Create retrievers with reranking
@@ -161,15 +163,13 @@ class VectorRAGSystem:
                 print("⚠️  No FAQ content to process")
                 return False
             
-            # Reinitialize FAQ vector store (in-memory, so just recreate)
-            self.faq_vectorstore = Qdrant(
-                client=QdrantClient(location=":memory:"),
+            # Create new FAQ vector store with documents (this properly initializes the collection)
+            self.faq_vectorstore = QdrantVectorStore.from_documents(
+                documents=faq_documents,
+                embedding=self.embedding_model,
                 collection_name="faq_collection",
-                embeddings=self.embedding_model,
+                client=QdrantClient(location=":memory:"),
             )
-            
-            # Add documents to vector store
-            self.faq_vectorstore.add_documents(faq_documents)
             
             # Recreate retriever
             self._setup_retrievers()
@@ -196,15 +196,13 @@ class VectorRAGSystem:
             split_chunks = self.text_splitter.split_documents(documents)
             print(f"📄 Created {len(split_chunks)} knowledge chunks")
             
-            # Reinitialize KB vector store (in-memory, so just recreate)
-            self.kb_vectorstore = Qdrant(
-                client=QdrantClient(location=":memory:"),
+            # Create new KB vector store with documents (this properly initializes the collection)
+            self.kb_vectorstore = QdrantVectorStore.from_documents(
+                documents=split_chunks,
+                embedding=self.embedding_model,
                 collection_name="kb_collection",
-                embeddings=self.embedding_model,
+                client=QdrantClient(location=":memory:"),
             )
-            
-            # Add documents to vector store
-            self.kb_vectorstore.add_documents(split_chunks)
             
             # Recreate retriever
             self._setup_retrievers()
