@@ -1249,21 +1249,20 @@ def main():
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error updating FAQ vector store: {str(e)}")
 
-    port = os.getenv('PORT', '8003')
-    print(f"🚀 Starting A2A Multi-Agent Customer Support Server on {os.getenv('A2A_SERVER_URL', 'http://localhost')}:{port}")
+    port = int(os.getenv('PORT', 8003))
+    print(f"🚀 Starting A2A Multi-Agent Customer Support Server on {os.getenv('A2A_SERVER_URL', f'http://localhost:{port}')}")
     print("🤖 Available Specialized Agents:")
     print("   • Triage Agent - Request classification and routing")
     print("   • Email Agent - Email operations and communication")
     print("   • Documentation Agent - Ticket logging and knowledge management")
     print("   • Resolution Agent - Solution generation and response")
     print("   • Escalation Agent - Complex issue handling")
-    print(f"📋 Agent Card: {os.getenv('A2A_SERVER_URL', 'http://localhost')}:{port}/.well-known/agent.json")
+    print(f"📋 Agent Card: {os.getenv('A2A_SERVER_URL', f'http://localhost:{port}')}/.well-known/agent.json")
     print("🔗 MCP Integration: Gmail (8001) + Drive (8002)")
     print("📊 Features: Multi-agent workflows, structured tasks, MCP tool integration")
     
     # Run the server
-    port = int(os.getenv('PORT', 8003))
-    print(f"🚀 Starting on {os.getenv('A2A_SERVER_URL', 'http://localhost')}:{port}")
+    print(f"🚀 Starting on {os.getenv('A2A_SERVER_URL', f'http://localhost:{port}')}")
     uvicorn.run(app, host="0.0.0.0", port=port)
 
 if __name__ == "__main__":
