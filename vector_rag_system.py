@@ -108,19 +108,19 @@ class VectorRAGSystem:
         """Initialize ephemeral in-memory FAQ and KB vector stores"""
         try:
             # Initialize FAQ vector store (in-memory)
-            self.faq_vectorstore = QdrantVectorStore.from_documents(
-                documents=[],  # Start with empty collection
-                embedding=self.embedding_model,
+            faq_client = QdrantClient(location=":memory:")
+            self.faq_vectorstore = QdrantVectorStore(
+                client=faq_client,
                 collection_name="faq_collection",
-                client=QdrantClient(location=":memory:"),
+                embedding=self.embedding_model,
             )
             
             # Initialize KB vector store (in-memory)
-            self.kb_vectorstore = QdrantVectorStore.from_documents(
-                documents=[],  # Start with empty collection
-                embedding=self.embedding_model,
+            kb_client = QdrantClient(location=":memory:")
+            self.kb_vectorstore = QdrantVectorStore(
+                client=kb_client,
                 collection_name="kb_collection",
-                client=QdrantClient(location=":memory:"),
+                embedding=self.embedding_model,
             )
             
             # Create retrievers with reranking
@@ -164,11 +164,12 @@ class VectorRAGSystem:
                 return False
             
             # Create new FAQ vector store with documents (this properly initializes the collection)
+            faq_client = QdrantClient(location=":memory:")
             self.faq_vectorstore = QdrantVectorStore.from_documents(
                 documents=faq_documents,
                 embedding=self.embedding_model,
                 collection_name="faq_collection",
-                client=QdrantClient(location=":memory:"),
+                url=":memory:",  # Use url parameter for in-memory
             )
             
             # Recreate retriever
@@ -201,7 +202,7 @@ class VectorRAGSystem:
                 documents=split_chunks,
                 embedding=self.embedding_model,
                 collection_name="kb_collection",
-                client=QdrantClient(location=":memory:"),
+                url=":memory:",  # Use url parameter for in-memory
             )
             
             # Recreate retriever
