@@ -67,8 +67,8 @@ class VectorRAGSystem:
         
         # Setup text splitter
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=50,
-            chunk_overlap=5,
+            chunk_size=500,  # Restored to reasonable size for meaningful chunks
+            chunk_overlap=50,  # Proportional overlap
             length_function=self._token_len,
             separators=["\n\n", "\n", ".", "!", "?", ";", ":", " ", ""]
         )
@@ -107,24 +107,14 @@ class VectorRAGSystem:
     def _initialize_vector_stores(self):
         """Initialize ephemeral in-memory FAQ and KB vector stores"""
         try:
-            # Initialize FAQ vector store (in-memory)
-            faq_client = QdrantClient(location=":memory:")
-            self.faq_vectorstore = QdrantVectorStore(
-                client=faq_client,
-                collection_name="faq_collection",
-                embedding=self.embedding_model,
-            )
+            # Create shared in-memory client
+            self.qdrant_client = QdrantClient(location=":memory:")
             
-            # Initialize KB vector store (in-memory)
-            kb_client = QdrantClient(location=":memory:")
-            self.kb_vectorstore = QdrantVectorStore(
-                client=kb_client,
-                collection_name="kb_collection",
-                embedding=self.embedding_model,
-            )
-            
-            # Create retrievers with reranking
-            self._setup_retrievers()
+            # Initialize empty vector stores - they will be created when first documents are added
+            self.faq_vectorstore = None
+            self.kb_vectorstore = None
+            self.faq_retriever = None
+            self.kb_retriever = None
             
             print("✅ In-memory vector stores initialized successfully")
             
@@ -134,24 +124,26 @@ class VectorRAGSystem:
     
     def _setup_retrievers(self):
         """Setup retrievers with contextual compression (reranking)"""
-        # FAQ retriever with reranking
-        base_faq_retriever = self.faq_vectorstore.as_retriever(
-            search_kwargs={"k": 10}  # Get more candidates for reranking
-        )
-        compressor = LLMChainExtractor.from_llm(self.llm)
-        self.faq_retriever = ContextualCompressionRetriever(
-            base_compressor=compressor,
-            base_retriever=base_faq_retriever
-        )
+        # Only setup retrievers if vector stores exist
+        if self.faq_vectorstore:
+            base_faq_retriever = self.faq_vectorstore.as_retriever(
+                search_kwargs={"k": 10}  # Get more candidates for reranking
+            )
+            compressor = LLMChainExtractor.from_llm(self.llm)
+            self.faq_retriever = ContextualCompressionRetriever(
+                base_compressor=compressor,
+                base_retriever=base_faq_retriever
+            )
         
-        # KB retriever with reranking
-        base_kb_retriever = self.kb_vectorstore.as_retriever(
-            search_kwargs={"k": 10}  # Get more candidates for reranking
-        )
-        self.kb_retriever = ContextualCompressionRetriever(
-            base_compressor=compressor,
-            base_retriever=base_kb_retriever
-        )
+        if self.kb_vectorstore:
+            base_kb_retriever = self.kb_vectorstore.as_retriever(
+                search_kwargs={"k": 10}  # Get more candidates for reranking
+            )
+            compressor = LLMChainExtractor.from_llm(self.llm)
+            self.kb_retriever = ContextualCompressionRetriever(
+                base_compressor=compressor,
+                base_retriever=base_kb_retriever
+            )
     
     def create_faq_vectorstore(self, faq_content: str) -> bool:
         """Create/update FAQ vector store from FAQ content"""
@@ -164,7 +156,6 @@ class VectorRAGSystem:
                 return False
             
             # Create new FAQ vector store with documents (this properly initializes the collection)
-            faq_client = QdrantClient(location=":memory:")
             self.faq_vectorstore = QdrantVectorStore.from_documents(
                 documents=faq_documents,
                 embedding=self.embedding_model,
@@ -279,7 +270,7 @@ class VectorRAGSystem:
     async def search_faq(self, query: str, top_k: int = 3) -> Dict[str, Any]:
         """Search FAQ vector store with similarity search and reranking"""
         try:
-            if not self.faq_retriever:
+            if not self.faq_vectorstore or not self.faq_retriever:
                 return {"found": False, "error": "FAQ vector store not initialized"}
             
             # Retrieve relevant FAQ documents
@@ -312,7 +303,7 @@ class VectorRAGSystem:
     async def search_knowledge_base(self, query: str, top_k: int = 5) -> Dict[str, Any]:
         """Search KB vector store with similarity search and reranking"""
         try:
-            if not self.kb_retriever:
+            if not self.kb_vectorstore or not self.kb_retriever:
                 return {"found": False, "error": "KB vector store not initialized"}
             
             # Retrieve relevant KB documents
