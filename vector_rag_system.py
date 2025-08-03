@@ -156,12 +156,15 @@ class VectorRAGSystem:
                 return False
             
             # Create new FAQ vector store with documents (this properly initializes the collection)
-            self.faq_vectorstore = QdrantVectorStore.from_documents(
-                documents=faq_documents,
-                embedding=self.embedding_model,
+            # Use shared in-memory client for consistency
+            self.faq_vectorstore = QdrantVectorStore(
+                client=self.qdrant_client,
                 collection_name="faq_collection",
-                url=":memory:",  # Use url parameter for in-memory
+                embedding=self.embedding_model,
             )
+            
+            # Add documents to the vector store
+            self.faq_vectorstore.add_documents(faq_documents)
             
             # Recreate retriever
             self._setup_retrievers()
@@ -189,12 +192,15 @@ class VectorRAGSystem:
             print(f"📄 Created {len(split_chunks)} knowledge chunks")
             
             # Create new KB vector store with documents (this properly initializes the collection)
-            self.kb_vectorstore = QdrantVectorStore.from_documents(
-                documents=split_chunks,
-                embedding=self.embedding_model,
+            # Use shared in-memory client for consistency
+            self.kb_vectorstore = QdrantVectorStore(
+                client=self.qdrant_client,
                 collection_name="kb_collection",
-                url=":memory:",  # Use url parameter for in-memory
+                embedding=self.embedding_model,
             )
+            
+            # Add documents to the vector store
+            self.kb_vectorstore.add_documents(split_chunks)
             
             # Recreate retriever
             self._setup_retrievers()
